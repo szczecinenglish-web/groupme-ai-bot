@@ -37,7 +37,7 @@ def callback():
                 "Content-Type": "application/json",
             },
             json={"contents": [{"parts": [{"text": question}]}]},
-            timeout=40,
+            timeout=90,
         )
 
         if response.ok:
