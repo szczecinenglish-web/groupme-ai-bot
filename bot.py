@@ -56,7 +56,7 @@ def callback():
             if item.get("type") == "output_text"
         )
     else:
-        answer = "Sorry, I couldn't reach the AI service."
+        answer = f"OpenAI error {response.status_code}: {response.text[:300]}"
 
     requests.post(
         "https://api.groupme.com/v3/bots/post",
