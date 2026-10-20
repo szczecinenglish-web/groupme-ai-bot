@@ -5,7 +5,7 @@ from flask import Flask, request
 app = Flask(__name__)
 
 GROUPME_BOT_ID = os.environ.get("GROUPME_BOT_ID")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 @app.route("/", methods=["GET"])
 def home():
@@ -13,7 +13,7 @@ def home():
 
 @app.route("/callback", methods=["POST"])
 def callback():
-    message = request.json
+    message = request.get_json(silent=True)
 
     if not message:
         return "OK", 200
@@ -33,38 +33,56 @@ def callback():
     if not question:
         return "OK", 200
 
-    response = requests.post(
-        "https://api.openai.com/v1/responses",
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "gpt-4.1-mini",
-            "input": question,
-        },
-        timeout=30,
-    )
-
-    if response.ok:
-        data = response.json()
-        answer = "".join(
-            item.get("text", "")
-            for item in data.get("output", [])
-            if item.get("type") == "message"
-            for item in item.get("content", [])
-            if item.get("type") == "output_text"
+    try:
+        response = requests.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+            headers={
+                "x-goog-api-key": GEMINI_API_KEY,
+                "Content-Type": "application/json",
+            },
+            json={
+                "contents": [{
+                    "parts": [{"text": question}]
+                }]
+            },
+            timeout=40,
         )
-    else:
-        answer = f"OpenAI error {response.status_code}: {response.text[:300]}"
 
-    requests.post(
-        "https://api.groupme.com/v3/bots/post",
-        json={
-            "bot_id": GROUPME_BOT_ID,
-            "text": answer[:900],
-        },
-        timeout=15,
-    )
+        if response.ok:
+            data = response.json()
+            answer = "".join(
+                part.get("text", "")
+                for candidate in data.get("candidates", [])
+                for part in candidate.get("content", {}).get("parts", [])
+            )
+            if not answer:
+                answer = "Sorry, the AI returned no text."
+        else:
+            answer = (
+                f"Gemini error {response.status_code}: "
+                f"{response.text[:250]}"
+            )
+
+    except requests.RequestException:
+        answer = "Sorry, I couldn't connect to the AI service."
+
+    try:
+        requests.post(
+            "https://api.groupme.com/v3/bots/post",
+            json={
+                "bot_id": GROUPME_BOT_ID,
+                "text": answer[:900],
+            },
+            timeout=15,
+        )
+    except requests.RequestException:
+        pass
+
+    return "OK", 200
+
 if __name__ == "__main__":
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000))
+    )
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
