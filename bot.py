@@ -63,8 +63,8 @@ def callback():
                 f"{response.text[:250]}"
             )
 
-    except requests.RequestException:
-        answer = "Sorry, I couldn't connect to the AI service."
+except requests.RequestException as e:
+    answer = f"Connection error: {type(e).__name__}"
 
     try:
         requests.post(
