@@ -14,22 +14,18 @@ def home():
 @app.route("/callback", methods=["POST"])
 def callback():
     message = request.get_json(silent=True)
-
     if not message:
         return "OK", 200
 
     text = message.get("text", "")
-    sender = message.get("sender_type", "")
-    bot_id = message.get("bot_id", "")
-
-    if sender == "bot" or bot_id == GROUPME_BOT_ID:
+    if message.get("sender_type") == "bot":
         return "OK", 200
-
+    if message.get("bot_id") == GROUPME_BOT_ID:
+        return "OK", 200
     if not text.lower().startswith("ai:"):
         return "OK", 200
 
     question = text[3:].strip()
-
     if not question:
         return "OK", 200
 
@@ -37,14 +33,10 @@ def callback():
         response = requests.post(
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
             headers={
-                "x-goog-api-key": GEMINI_API_KEY,
+                "x-goog-api-key": GEMINI_API_KEY or "",
                 "Content-Type": "application/json",
             },
-            json={
-                "contents": [{
-                    "parts": [{"text": question}]
-                }]
-            },
+            json={"contents": [{"parts": [{"text": question}]}]},
             timeout=40,
         )
 
@@ -56,15 +48,15 @@ def callback():
                 for part in candidate.get("content", {}).get("parts", [])
             )
             if not answer:
-                answer = "Sorry, the AI returned no text."
+                answer = "Gemini returned no text."
         else:
             answer = (
                 f"Gemini error {response.status_code}: "
                 f"{response.text[:250]}"
             )
 
-except requests.RequestException as e:
-    answer = f"Connection error: {type(e).__name__}"
+    except requests.RequestException as e:
+        answer = f"Connection error: {type(e).__name__}"
 
     try:
         requests.post(
@@ -85,4 +77,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 10000))
     )
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
