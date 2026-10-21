@@ -14,6 +14,8 @@ def home():
 @app.route("/callback", methods=["POST"])
 def callback():
     data = request.get_json(silent=True) or {}
+    print("SENDER NAME:", data.get("name"))
+    print("SENDER ID:", data.get("user_id"))
 
     # Ignore bot messages to prevent an endless reply loop
     if data.get("sender_type") == "bot":
