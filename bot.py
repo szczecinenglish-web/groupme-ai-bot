@@ -30,7 +30,7 @@ def callback():
         "https://api.groupme.com/v3/bots/post",
         json={
             "bot_id": GROUPME_BOT_ID,
-            "text": "yes we are working on that"
+            "text": "yes we are working on that. haze creates conflict within the league. Thank you dearly for your participation in this experience. If you are not feeling well press 2. For English press *. Touch tones phones only."
         },
         timeout=10
     )
